@@ -6,13 +6,19 @@ import torch.optim as optim
 from torchvision import datasets, models, transforms
 from torch.utils.data import DataLoader
 
-from time import time
+import numpy as np
+import matplotlib.pyplot as plt_1
+import time
 import os
 
 class Classifier(nn.Module):
-    def __init__(self, num_classes):
+    def __init__(self):
         super().__init__()
         self.model = models.resnet50(pretrained=True)
+    
+    def my_model(self, num_classes):
+        for param in self.model.parameters():
+            param.requires_grad = False
         fc_inputs = self.model.fc.in_features
         self.model.fc = nn.Sequential(
             nn.Linear(fc_inputs, 256),
@@ -21,29 +27,30 @@ class Classifier(nn.Module):
             nn.Linear(256, num_classes), # Since 10 possible outputs
             nn.LogSoftmax(dim=1) # For using NLLLoss()
         )
+        return self.model
 
 def preprocessing(dataset_folder, batch_size):
 
     image_transforms = {
     'train': transforms.Compose([
-        transforms.RandomResizedCrop(size=468, scale=(0.8, 1.0)),
+        transforms.RandomResizedCrop(size=[640,480], scale=(0.8, 1.0)),
         # transforms.RandomRotation(degrees=15),
         # transforms.RandomHorizontalFlip(),
-        transforms.CenterCrop(size=448),
+        # transforms.CenterCrop(size=448),
         transforms.ToTensor(),
         transforms.Normalize([0.485, 0.456, 0.406],
                              [0.229, 0.224, 0.225])
     ]),
     'valid': transforms.Compose([
-        transforms.Resize(size=468),
-        transforms.CenterCrop(size=448),
+        transforms.Resize(size=[640,480]),
+        # transforms.CenterCrop(size=448),
         transforms.ToTensor(),
         transforms.Normalize([0.485, 0.456, 0.406],
                              [0.229, 0.224, 0.225])
     ]),
     'test': transforms.Compose([
-        transforms.Resize(size=468),
-        transforms.CenterCrop(size=448),
+        transforms.Resize(size=[640,480]),
+        # transforms.CenterCrop(size=448),
         transforms.ToTensor(),
         transforms.Normalize([0.485, 0.456, 0.406],
                              [0.229, 0.224, 0.225])
@@ -55,7 +62,7 @@ def preprocessing(dataset_folder, batch_size):
 
     # Number of classes
     num_classes = len(os.listdir(valid_directory))  #10#2#257
-    print(num_classes)
+    print("num_classes: ", num_classes)
 
     # Load Data from folders
     data = {
@@ -87,10 +94,9 @@ def train(epochs, paras, restored_path = '', output_path = ''):
     train_data_size ,valid_data_size,train_data_loader, valid_data_loader,num_classes = paras
     graph = True
     
-    model= Classifier(num_classes)
+    net= Classifier()
+    model = net.my_model(num_classes)
     device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
-    for param in model.parameters():
-        param.requires_grad = False
 
     optimizer = optim.Adam(model.parameters())
     # Define Optimizer and Loss Function
@@ -201,8 +207,8 @@ def train(epochs, paras, restored_path = '', output_path = ''):
                 #print("Validation Batch number: {:03d}, Validation: Loss: {:.4f}, Accuracy: {:.4f}".format(j, loss.item(), acc.item()))
         if valid_loss < best_loss:
             best_loss = valid_loss
-            best_epoch = epoch
-            torch.save(f"{output_path}/exported_best_model.pt")
+            best_epoch = epoch + 1
+            torch.save(model,f"{output_path}/exported_best_model.pt")
 
         # Find average training loss and training accuracy
         avg_train_loss = train_loss/train_data_size 
@@ -215,24 +221,14 @@ def train(epochs, paras, restored_path = '', output_path = ''):
         history.append([avg_train_loss, avg_valid_loss, avg_train_acc, avg_valid_acc])
 
         if graph:
-
             # loss
-            show_history = np.array(history)
-            plt.plot(show_history[:,0:2])
-            plt.legend(['Tr Loss', 'Val Loss'])
-            plt.xlabel('Epoch Number')
-            plt.ylabel('Loss')
-            plt.ylim(0,1)
-            plt.savefig(output_path+'/'+'_loss_curve.png')
-
-            # accuracy
-            plt.plot(show_history[:,2:4])
-            plt.legend(['Tr Acc', 'Val Acc'])
-            plt.xlabel('Epoch Number')
-            plt.ylabel('Accuracy')
-            plt.ylim(0,1)
-            plt.savefig(output_path+'/'+'_Accuracy_curve.png')
-            # plt.show()      
+            show_history_1 = np.array(history)
+            plt_1.plot(show_history_1[:,0:2])
+            plt_1.legend(['Tr Loss', 'Val Loss'])
+            plt_1.xlabel('Epoch Number')
+            plt_1.ylabel('Loss')
+            plt_1.ylim(0,1)
+            plt_1.savefig(output_path+'/'+'loss_curve.png')
         epoch_end = time.time()
     
         print("Epoch : {:03d}, Training: Loss - {:.4f}, Accuracy - {:.4f}%, \n\t\tValidation : Loss - {:.4f}, Accuracy - {:.4f}%, Time: {:.4f}s".format(epoch, avg_train_loss, avg_train_acc*100, avg_valid_loss, avg_valid_acc*100, epoch_end-epoch_start))
@@ -242,13 +238,12 @@ def train(epochs, paras, restored_path = '', output_path = ''):
             os.makedirs(output_path)
         
         # saving model and checkpoint
-        print("saving checkpoint: ", str(epoch+1))
+        print("saving checkpoint of: ", str(epoch+1))
         torch.save({
             'epoch': str(epoch+1),
             'model_state_dict': model.state_dict(),
             'optimizer_state_dict': optimizer.state_dict(),
             'loss': loss,
             }, f"{output_path}/latest_ckpt.pt")
-        torch.save(f"{output_path}/exported_latest_model.pt")
-            
-    return model, history, best_epoch
+        torch.save(model,f"{output_path}/exported_latest_model.pt")
+
