@@ -14,9 +14,16 @@ import os
 class Classifier(nn.Module):
     def __init__(self):
         super().__init__()
+        # self.model = models.resnet50()
+    def train_model(self, num_classes):
         self.model = models.resnet50(pretrained=True)
+        return self.func(num_classes)
     
-    def my_model(self, num_classes):
+    def retrain_model(self, num_classes):
+        self.model = models.resnet50()
+        return self.func(num_classes)
+    
+    def func(self, num_classes):
         for param in self.model.parameters():
             param.requires_grad = False
         fc_inputs = self.model.fc.in_features
@@ -28,6 +35,7 @@ class Classifier(nn.Module):
             nn.LogSoftmax(dim=1) # For using NLLLoss()
         )
         return self.model
+    
 
 def preprocessing(dataset_folder, batch_size):
 
@@ -95,7 +103,11 @@ def train(epochs, paras, restored_path = '', output_path = ''):
     graph = True
     
     net= Classifier()
-    model = net.my_model(num_classes)
+    if restored_path:
+      model = net.retrain_model(num_classes)
+    else:
+      print("Transfer learning...")
+      model = net.train_model(num_classes)
     device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
 
     optimizer = optim.Adam(model.parameters())
@@ -104,11 +116,13 @@ def train(epochs, paras, restored_path = '', output_path = ''):
     model = model.to(device)
     start_epoch = 0
     if restored_path:
+        print("ReTrianing...")
         checkpoint = torch.load(restored_path)
         model.load_state_dict(checkpoint['model_state_dict'])
         optimizer.load_state_dict(checkpoint['optimizer_state_dict'])
-        start_epoch = checkpoint['epoch']
-        loss_criterion = checkpoint['loss']
+        start_epoch = int(checkpoint['epoch'])
+        loss = checkpoint['loss']
+        epochs += start_epoch
 
     '''
     Returns
@@ -246,4 +260,3 @@ def train(epochs, paras, restored_path = '', output_path = ''):
             'loss': loss,
             }, f"{output_path}/latest_ckpt.pt")
         torch.save(model,f"{output_path}/exported_latest_model.pt")
-

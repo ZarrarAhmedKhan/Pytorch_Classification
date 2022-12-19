@@ -1,3 +1,10 @@
+'''
+  *** RUN ***
+  !python3 evaluation test_data_path model_path
+  
+  test_data_path contain --> ('real' and 'fake') all classes folder
+'''
+
 import torch
 import torch.nn as nn
 import torch, torchvision
@@ -32,7 +39,7 @@ device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
 class Classifier(nn.Module):
     def __init__(self):
         super().__init__()
-        self.model = models.resnet50(pretrained=True)
+        self.model = models.resnet50()
     
     def my_model(self, num_classes):
         for param in self.model.parameters():
@@ -154,7 +161,8 @@ def evaluate(test_data, model_path, output_path):
 
     # Build confusion matrix
     cf_matrix = confusion_matrix(y_true, y_pred)
-    df_cm = pd.DataFrame(cf_matrix/np.sum(cf_matrix) *len(classes_names), index = [i for i in classes_names],
+    print(cf_matrix)
+    df_cm = pd.DataFrame(cf_matrix, index = [i for i in classes_names],
                         columns = [i for i in classes_names])
     
     plt.figure(figsize = (12,7))
