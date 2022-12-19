@@ -22,5 +22,16 @@
 
 * test_data_path contain --> ('real' and 'fake') all classes folder
 
+## Testing
 
+*IMAGES FOLDER*
 
+> `python3 test_image.py test_folder output_folder`
+    
+*SINGLE IMAGE*
+
+> `!python3 test_image.py image.jpg`
+
+*VIDEO*
+
+> `!python3 test_video.py video.mp4`
