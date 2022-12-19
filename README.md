@@ -12,6 +12,16 @@
 
 > `!python3 train_classifier.py`
 
+#### After training:
+
+We get in OUTPUT_FOLDER_PATH,
+
+* exported_latest_model.pt (for inference)
+
+* exported_best_model.pt (model(epoch) having lowest loss)
+
+* latest_ckpt.pt (for re-training or evaluation)
+
 ## ReTraining
 
 * set restored_path also
